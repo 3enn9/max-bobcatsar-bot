@@ -4,6 +4,7 @@ import (
 	"bobcatsar-max-bot/internal/config"
 	"database/sql"
 	"fmt"
+	_ "github.com/jackc/pgx/v5"
 	"log"
 	"time"
 )
@@ -30,7 +31,7 @@ func ConnectionDB(config *config.Config) (*sql.DB, error) {
 			log.Println("✅ Connected to PostgreSQL")
 			return db, nil
 		} else {
-			log.Printf("⚠️ Waiting for DB (try %d/20)...")
+			log.Printf("⚠️ Waiting for DB (try %d/20)...", i+1)
 			db.Close()
 		}
 
