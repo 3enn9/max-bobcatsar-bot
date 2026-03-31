@@ -11,9 +11,7 @@ import (
 
 func ConnectionDB(config *config.Config) (*pgx.Conn, error) {
 	dataSourceName := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		config.Host,
-		config.Port,
+		"postgres://%s:%s@postgres:5432/%s",
 		config.Root,
 		config.Password,
 		config.Dbname,
