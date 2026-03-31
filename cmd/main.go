@@ -2,6 +2,7 @@ package main
 
 import (
 	"bobcatsar-max-bot/internal/config"
+	"bobcatsar-max-bot/internal/db"
 	"context"
 	"fmt"
 	"github.com/max-messenger/max-bot-api-client-go/schemes"
@@ -18,6 +19,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
 	cfg := config.NewConfig()
+
+	db.ConnectionDB(cfg)
 
 	api, _ := maxbot.New(cfg.Token)
 
