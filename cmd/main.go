@@ -45,7 +45,7 @@ func main() {
 			switch upd := update.(type) {
 			case *schemes.MessageCreatedUpdate:
 				message := maxbot.NewMessage().
-					SetUser(upd.Message.Recipient.ChatId).
+					SetChat(upd.Message.Recipient.ChatId).
 					SetText(fmt.Sprintf("Hello, %s! Your message: %s", upd.Message.Sender.Name, upd.Message.Body.Text))
 
 				err = api.Messages.Send(ctx, message)
