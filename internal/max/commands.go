@@ -19,12 +19,12 @@ type MaxService struct {
 func NewMaxService(pool *pgxpool.Pool) *MaxService {
 	m := &MaxService{pool: pool}
 	m.Commands = map[string]CommandHandler{
-		"/salary": m.PrePaymentMessage,
+		"/salary": m.PrePaymentCommand,
 	}
 	return m
 }
 
-func (ms *MaxService) PrePaymentMessage(upd *schemes.MessageCreatedUpdate) {
+func (ms *MaxService) PrePaymentCommand(upd *schemes.MessageCreatedUpdate) {
 	salaryStr := strings.Split(upd.Message.Body.Text, " ")[1]
 	salaryFloat, err := strconv.ParseFloat(salaryStr, 64)
 	if err != nil {
