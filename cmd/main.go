@@ -3,6 +3,7 @@ package main
 import (
 	"bobcatsar-max-bot/internal/config"
 	"bobcatsar-max-bot/internal/db"
+	"bobcatsar-max-bot/internal/max"
 	"context"
 	"fmt"
 	"github.com/max-messenger/max-bot-api-client-go/schemes"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	maxbot "github.com/max-messenger/max-bot-api-client-go"
@@ -20,8 +22,13 @@ func main() {
 	defer stop()
 	cfg := config.NewConfig()
 
-	db.ConnectionDB(cfg)
+	pool, err := db.ConnectionDB(cfg)
 
+	if err != nil {
+		log.Fatalf("error create db pool %v", err)
+	}
+
+	maxService := max.NewMaxService(pool)
 	api, _ := maxbot.New(cfg.Token)
 
 	errChan := api.GetErrors()
@@ -44,11 +51,13 @@ func main() {
 			log.Printf("Received: %#v", update)
 			switch upd := update.(type) {
 			case *schemes.MessageCreatedUpdate:
-				message := maxbot.NewMessage().
-					SetChat(upd.Message.Recipient.ChatId).
-					SetText(fmt.Sprintf("Hello, %s! Your message: %s", upd.Message.Sender.Name, upd.Message.Body.Text))
+				command := upd.Message.Body.Text
+				command = strings.Split(command, " ")[0]
 
-				err = api.Messages.Send(ctx, message)
+				if someFunc, ok := maxService.Commands[command]; ok {
+					someFunc(upd)
+				}
+
 				log.Printf("Answer: %#v", err)
 			default:
 				log.Printf("Unknown type: %#v", upd)

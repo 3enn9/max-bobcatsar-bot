@@ -5,11 +5,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"time"
 )
 
-func ConnectionDB(config *config.Config) (*pgx.Conn, error) {
+func ConnectionDB(config *config.Config) (*pgxpool.Pool, error) {
 	dataSourceName := fmt.Sprintf(
 		"postgres://%s:%s@postgres:5432/%s",
 		config.Root,
@@ -26,7 +27,8 @@ func ConnectionDB(config *config.Config) (*pgx.Conn, error) {
 			log.Printf("❌ Failed to open DB (try %d/20): %v", i+1, err)
 		} else if pingErr := conn.Ping(context.Background()); pingErr == nil {
 			log.Println("✅ Connected to PostgreSQL")
-			return conn, nil
+			pool := NewPool(dataSourceName)
+			return pool, nil
 		} else {
 			log.Printf("⚠️ Waiting for DB (try %d/20)...", i+1)
 			conn.Close(context.Background())
@@ -36,4 +38,25 @@ func ConnectionDB(config *config.Config) (*pgx.Conn, error) {
 	}
 
 	return nil, fmt.Errorf("failed to connect to DB: %w", err)
+}
+
+func AddPrePayment(pool *pgxpool.Pool, name string, salary float64, group_id int64) {
+	_, err := pool.Exec(
+		context.Background(),
+		"INSERT INTO users (name, salary, group_id) VALUES ($1, $2, $3);",
+		name, salary, group_id,
+	)
+	if err != nil {
+		log.Printf("Не удалось добавить запись в бд ошибка: %v\n", err)
+		return
+	}
+	log.Println("Аванс успешно добавлен")
+}
+
+func NewPool(connString string) *pgxpool.Pool {
+	pool, err := pgxpool.New(context.Background(), connString)
+	if err != nil {
+		log.Fatalf("Не удалось подключиться к БД: %v", err)
+	}
+	return pool
 }
