@@ -25,11 +25,15 @@ func NewMaxService(pool *pgxpool.Pool) *MaxService {
 }
 
 func (ms *MaxService) PrePaymentCommand(upd *schemes.MessageCreatedUpdate) {
-	salaryStr := strings.Split(upd.Message.Body.Text, " ")[1]
-	salaryFloat, err := strconv.ParseFloat(salaryStr, 64)
+	text := strings.Split(upd.Message.Body.Text, " ")
+	if len(text) <= 1 {
+		log.Println("Не верный формат ввода команды")
+		return
+	}
+	salary, err := strconv.ParseFloat(text[1], 64)
 	if err != nil {
 		log.Println("error convert string to float")
 		return
 	}
-	db.AddPrePayment(ms.pool, " ", salaryFloat, upd.Message.Recipient.ChatId)
+	db.AddPrePayment(ms.pool, " ", salary, upd.Message.Recipient.ChatId)
 }
