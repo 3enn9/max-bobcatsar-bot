@@ -40,17 +40,16 @@ func ConnectionDB(config *config.Config) (*pgxpool.Pool, error) {
 	return nil, fmt.Errorf("failed to connect to DB: %w", err)
 }
 
-func AddPrePayment(pool *pgxpool.Pool, name string, salary float64, group_id int64) {
+func AddPrePayment(pool *pgxpool.Pool, name string, salary float64, group_id int64) error {
 	_, err := pool.Exec(
 		context.Background(),
 		"INSERT INTO users (name, salary, group_id) VALUES ($1, $2, $3);",
 		name, salary, group_id,
 	)
 	if err != nil {
-		log.Printf("Не удалось добавить запись в бд ошибка: %v\n", err)
-		return
+		return err
 	}
-	log.Println("Аванс успешно добавлен")
+	return nil
 }
 
 func NewPool(connString string) *pgxpool.Pool {

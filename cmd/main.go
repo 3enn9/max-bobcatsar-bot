@@ -55,10 +55,12 @@ func main() {
 				command = strings.Split(command, " ")[0]
 
 				if someFunc, ok := maxService.Commands[command]; ok {
-					someFunc(upd)
+					msg := someFunc(upd)
+					err = api.Messages.Send(context.Background(), msg)
+					if err != nil {
+						log.Printf("Ошибка отправки сообщения %v", err)
+					}
 				}
-
-				log.Printf("Answer: %#v", err)
 			default:
 				log.Printf("Unknown type: %#v", upd)
 			}
