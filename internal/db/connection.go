@@ -67,7 +67,9 @@ func PrePayments(pool *pgxpool.Pool, chatID int64) (error, string) {
 		if err := rows.Scan(&salary, &createdAt); err != nil {
 			return err, ""
 		}
-		text += fmt.Sprintf("%v %v\n", createdAt, salary)
+		date := createdAt.Format("02.01.06")
+
+		text += fmt.Sprintf("%v %v\n", date, salary)
 	}
 	return nil, text
 }
