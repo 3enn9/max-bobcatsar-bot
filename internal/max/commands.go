@@ -53,11 +53,12 @@ func (ms *MaxService) PrePaymentCommand(upd *schemes.MessageCreatedUpdate) *maxb
 
 func (ms *MaxService) ShowPrePayments(upd *schemes.MessageCreatedUpdate) *maxbot.Message {
 	chatID := upd.Message.Recipient.ChatId
-	err := db.PrePayments(ms.pool, chatID)
+	err, text := db.PrePayments(ms.pool, chatID)
 	if err != nil {
 		log.Printf("Не удалось показать авансы")
+		return nil
 	}
-	msg := maxbot.NewMessage().SetChat(upd.Message.Recipient.ChatId).SetText("Привет")
+	msg := maxbot.NewMessage().SetChat(upd.Message.Recipient.ChatId).SetText(text)
 
 	return msg
 }

@@ -52,24 +52,24 @@ func AddPrePayment(pool *pgxpool.Pool, name string, salary float64, chatID int64
 	return nil
 }
 
-func PrePayments(pool *pgxpool.Pool, chatID int64) error {
+func PrePayments(pool *pgxpool.Pool, chatID int64) (error, string) {
 	rows, err := pool.Query(
 		context.Background(),
 		"SELECT salary, created_at FROM users WHERE group_id = $1 and calculated IS FALSE;", chatID)
 	if err != nil {
-		return err
+		return err, ""
 	}
 	defer rows.Close()
-
+	var text string
 	for rows.Next() {
 		var salary int
 		var createdAt time.Time
 		if err := rows.Scan(&salary, &createdAt); err != nil {
-			return err
+			return err, ""
 		}
-		log.Println(salary)
+		text += fmt.Sprintf("%v %v\n", createdAt, salary)
 	}
-	return nil
+	return nil, text
 }
 
 func NewPool(connString string) *pgxpool.Pool {
