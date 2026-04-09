@@ -40,14 +40,34 @@ func ConnectionDB(config *config.Config) (*pgxpool.Pool, error) {
 	return nil, fmt.Errorf("failed to connect to DB: %w", err)
 }
 
-func AddPrePayment(pool *pgxpool.Pool, name string, salary float64, group_id int64) error {
+func AddPrePayment(pool *pgxpool.Pool, name string, salary float64, chatID int64) error {
 	_, err := pool.Exec(
 		context.Background(),
 		"INSERT INTO users (name, salary, group_id) VALUES ($1, $2, $3);",
-		name, salary, group_id,
+		name, salary, chatID,
 	)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func PrePayments(pool *pgxpool.Pool, chatID int64) error {
+	rows, err := pool.Query(
+		context.Background(),
+		"SELECT salary, created_at FROM users WHERE group_id = $1 and calculated IS FALSE;", chatID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var salary int
+		var createdAt time.Time
+		if err := rows.Scan(&salary, &createdAt); err != nil {
+			return err
+		}
+		log.Println(salary)
 	}
 	return nil
 }

@@ -21,6 +21,7 @@ func NewMaxService(pool *pgxpool.Pool) *MaxService {
 	m := &MaxService{pool: pool}
 	m.Commands = map[string]CommandHandler{
 		"/salary": m.PrePaymentCommand,
+		"/show":   m.ShowPrePayments,
 	}
 	return m
 }
@@ -48,4 +49,15 @@ func (ms *MaxService) PrePaymentCommand(upd *schemes.MessageCreatedUpdate) *maxb
 
 	return msg
 
+}
+
+func (ms *MaxService) ShowPrePayments(upd *schemes.MessageCreatedUpdate) *maxbot.Message {
+	chatID := upd.Message.Recipient.ChatId
+	err := db.PrePayments(ms.pool, chatID)
+	if err != nil {
+		log.Printf("Не удалось показать авансы")
+	}
+	msg := maxbot.NewMessage().SetChat(upd.Message.Recipient.ChatId).SetText("Привет")
+
+	return msg
 }
