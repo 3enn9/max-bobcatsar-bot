@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	maxbot "github.com/max-messenger/max-bot-api-client-go"
@@ -23,49 +22,31 @@ func main() {
 	cfg := config.NewConfig()
 
 	pool, err := db.ConnectionDB(cfg)
-
 	if err != nil {
 		log.Fatalf("error create db pool %v", err)
 	}
+	rep := db.NewRepository(pool)
+	api, err := maxbot.New(cfg.Token)
+	if err != nil {
+		log.Fatalf("failed to create api: %v", err)
+	}
 
-	maxService := max.NewMaxService(pool)
-	api, _ := maxbot.New(cfg.Token)
+	updateCh := make(chan schemes.UpdateInterface, 3)
+	maxService := max.NewMaxService(rep, api, updateCh)
 
 	errChan := api.GetErrors()
 	go func() {
 		for errMessage := range errChan {
-			log.Println(errMessage) // use your favorite logger
+			log.Println(errMessage)
 		}
 	}()
 
-	// Some methods demo:
 	info, err := api.Bots.GetBot(ctx)
 	fmt.Printf("Get me: %#v %#v", info, err)
 
-	ch := make(chan schemes.UpdateInterface)
+	http.HandleFunc("/webhook", api.GetHandler(updateCh))
 
-	http.HandleFunc("/webhook", api.GetHandler(ch))
-	go func() {
-		for {
-			update := <-ch
-			log.Printf("Received: %#v", update)
-			switch upd := update.(type) {
-			case *schemes.MessageCreatedUpdate:
-				command := upd.Message.Body.Text
-				command = strings.Split(command, " ")[0]
-
-				if someFunc, ok := maxService.Commands[command]; ok {
-					msg := someFunc(upd)
-					err = api.Messages.Send(context.Background(), msg)
-					if err != nil {
-						log.Printf("Ошибка отправки сообщения %v", err)
-					}
-				}
-			default:
-				log.Printf("Unknown type: %#v", upd)
-			}
-		}
-	}()
+	go maxService.ListenUpdates(ctx)
 
 	_ = http.ListenAndServe(":8080", nil)
 }

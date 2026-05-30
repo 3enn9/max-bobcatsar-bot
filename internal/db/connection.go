@@ -10,6 +10,14 @@ import (
 	"time"
 )
 
+type Repository struct {
+	pool *pgxpool.Pool
+}
+
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{pool: pool}
+}
+
 func ConnectionDB(config *config.Config) (*pgxpool.Pool, error) {
 	dataSourceName := fmt.Sprintf(
 		"postgres://%s:%s@postgres:5432/%s",
@@ -27,7 +35,10 @@ func ConnectionDB(config *config.Config) (*pgxpool.Pool, error) {
 			log.Printf("❌ Failed to open DB (try %d/20): %v", i+1, err)
 		} else if pingErr := conn.Ping(context.Background()); pingErr == nil {
 			log.Println("✅ Connected to PostgreSQL")
-			pool := NewPool(dataSourceName)
+			pool, err := pgxpool.New(context.Background(), dataSourceName)
+			if err != nil {
+				log.Fatalf("Не удалось подключиться к БД: %v", err)
+			}
 			return pool, nil
 		} else {
 			log.Printf("⚠️ Waiting for DB (try %d/20)...", i+1)
@@ -40,8 +51,8 @@ func ConnectionDB(config *config.Config) (*pgxpool.Pool, error) {
 	return nil, fmt.Errorf("failed to connect to DB: %w", err)
 }
 
-func AddPrePayment(pool *pgxpool.Pool, name string, salary float64, chatID int64) error {
-	_, err := pool.Exec(
+func (r *Repository) AddPrePayment(name string, salary float64, chatID int64) error {
+	_, err := r.pool.Exec(
 		context.Background(),
 		"INSERT INTO users (name, salary, group_id) VALUES ($1, $2, $3);",
 		name, salary, chatID,
@@ -52,8 +63,8 @@ func AddPrePayment(pool *pgxpool.Pool, name string, salary float64, chatID int64
 	return nil
 }
 
-func PrePayments(pool *pgxpool.Pool, chatID int64) (error, string) {
-	rows, err := pool.Query(
+func (r *Repository) PrePayments(chatID int64) (error, string) {
+	rows, err := r.pool.Query(
 		context.Background(),
 		"SELECT salary, created_at FROM users WHERE group_id = $1 and calculated IS FALSE;", chatID)
 	if err != nil {
@@ -69,17 +80,9 @@ func PrePayments(pool *pgxpool.Pool, chatID int64) (error, string) {
 			return err, ""
 		}
 		date := createdAt.Format("02.01.06")
-		text += fmt.Sprintf("%v %v\n", date, salary)
+		text += fmt.Sprintf("%v %v руб.\n", date, salary)
 		amount += salary
 	}
 	text += fmt.Sprintf("Итого: %v", amount)
 	return nil, text
-}
-
-func NewPool(connString string) *pgxpool.Pool {
-	pool, err := pgxpool.New(context.Background(), connString)
-	if err != nil {
-		log.Fatalf("Не удалось подключиться к БД: %v", err)
-	}
-	return pool
 }

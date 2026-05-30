@@ -2,7 +2,8 @@ package max
 
 import (
 	"bobcatsar-max-bot/internal/db"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"context"
+	"fmt"
 	maxbot "github.com/max-messenger/max-bot-api-client-go"
 	"github.com/max-messenger/max-bot-api-client-go/schemes"
 	"log"
@@ -13,12 +14,45 @@ import (
 type CommandHandler func(update *schemes.MessageCreatedUpdate) *maxbot.Message
 
 type MaxService struct {
-	pool     *pgxpool.Pool
+	rep      *db.Repository
+	maxApi   *maxbot.Api
 	Commands map[string]CommandHandler
+	updateCh <-chan schemes.UpdateInterface
 }
 
-func NewMaxService(pool *pgxpool.Pool) *MaxService {
-	m := &MaxService{pool: pool}
+func (ms *MaxService) ListenUpdates(ctx context.Context) {
+	for {
+		select {
+		case update, ok := <-ms.updateCh:
+			if !ok {
+				return
+			}
+			log.Printf("Received: %#v", update)
+			switch upd := update.(type) {
+			case *schemes.MessageCreatedUpdate:
+				command := upd.Message.Body.Text
+				command = strings.Split(command, " ")[0]
+
+				if someFunc, ok := ms.Commands[command]; ok {
+					go func(upd *schemes.MessageCreatedUpdate) {
+						msg := someFunc(upd)
+						err := ms.maxApi.Messages.Send(ctx, msg)
+						if err != nil {
+							fmt.Printf("error send message %v", err)
+						}
+					}(upd)
+				}
+			default:
+				log.Printf("Unknown type: %#v", upd)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func NewMaxService(rep *db.Repository, maxApi *maxbot.Api, updateCh <-chan schemes.UpdateInterface) *MaxService {
+	m := &MaxService{rep: rep, maxApi: maxApi, updateCh: updateCh}
 	m.Commands = map[string]CommandHandler{
 		"/salary": m.PrePaymentCommand,
 		"/show":   m.ShowPrePayments,
@@ -37,7 +71,7 @@ func (ms *MaxService) PrePaymentCommand(upd *schemes.MessageCreatedUpdate) *maxb
 		log.Println("error convert string to float")
 		return nil
 	}
-	err = db.AddPrePayment(ms.pool, " ", salary, upd.Message.Recipient.ChatId)
+	err = ms.rep.AddPrePayment(" ", salary, upd.Message.Recipient.ChatId)
 
 	if err != nil {
 		log.Printf("Не удалось добавить запись в бд ошибка: %v\n", err)
@@ -53,7 +87,7 @@ func (ms *MaxService) PrePaymentCommand(upd *schemes.MessageCreatedUpdate) *maxb
 
 func (ms *MaxService) ShowPrePayments(upd *schemes.MessageCreatedUpdate) *maxbot.Message {
 	chatID := upd.Message.Recipient.ChatId
-	err, text := db.PrePayments(ms.pool, chatID)
+	err, text := ms.rep.PrePayments(chatID)
 	if err != nil {
 		log.Printf("Не удалось показать авансы")
 		return nil
