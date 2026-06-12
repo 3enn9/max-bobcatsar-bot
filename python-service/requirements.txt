@@ -1,0 +1,8 @@
+beautifulsoup4==4.15.0
+google==3.0.0
+grpcio==1.81.0
+grpcio-tools==1.81.0
+protobuf==6.33.6
+setuptools==82.0.1
+soupsieve==2.8.4
+typing_extensions==4.15.0

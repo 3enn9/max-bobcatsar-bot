@@ -3,7 +3,8 @@ package main
 import (
 	"bobcatsar-max-bot/internal/config"
 	"bobcatsar-max-bot/internal/db"
-	"bobcatsar-max-bot/internal/max"
+	"bobcatsar-max-bot/internal/grpc/accountant"
+	max2 "bobcatsar-max-bot/internal/max"
 	"context"
 	"fmt"
 	"github.com/max-messenger/max-bot-api-client-go/schemes"
@@ -26,13 +27,21 @@ func main() {
 		log.Fatalf("error create db pool %v", err)
 	}
 	rep := db.NewRepository(pool)
+
 	api, err := maxbot.New(cfg.Token)
 	if err != nil {
 		log.Fatalf("failed to create api: %v", err)
 	}
 
+	accountantClient, err := accountant.NewClient("python-service:50051")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer accountantClient.Close()
+
 	updateCh := make(chan schemes.UpdateInterface, 3)
-	maxService := max.NewMaxService(rep, api, updateCh)
+	maxService := max2.NewMaxService(rep, api, updateCh, accountantClient)
 
 	errChan := api.GetErrors()
 	go func() {

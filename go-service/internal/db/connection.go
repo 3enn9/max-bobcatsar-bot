@@ -14,6 +14,13 @@ type Repository struct {
 	pool *pgxpool.Pool
 }
 
+type Payment struct {
+	TelegramGroupID int64
+	Operation       string
+	Description     string
+	Amount          float64
+}
+
 func NewRepository(pool *pgxpool.Pool) *Repository {
 	return &Repository{pool: pool}
 }
@@ -85,4 +92,30 @@ func (r *Repository) PrePayments(chatID int64) (error, string) {
 	}
 	text += fmt.Sprintf("Итого: %v", amount)
 	return nil, text
+}
+
+func (r *Repository) AddPayment(payment Payment) error {
+	_, err := r.pool.Exec(context.Background(), `
+    INSERT INTO operations
+    (telegram_group_id, operation, description, amount)
+    VALUES ($1, $2, $3, $4)`,
+		payment.TelegramGroupID,
+		payment.Operation,
+		payment.Description,
+		payment.Amount,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repository) GetBalance(chatID int64) (int64, error) {
+	var balance int64
+	err := r.pool.QueryRow(context.Background(), "SELECT SUM(amount) FROM operations WHERE telegram_group_id = $1", chatID).Scan(&balance)
+	if err != nil {
+		return 0, err
+	}
+	return balance, nil
 }

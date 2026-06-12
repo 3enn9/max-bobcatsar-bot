@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package accountant;
+
+option go_package = "go-service/internal/grpc/gen;gen";
+
+service AccountantService {
+  rpc SendAccountant (SendAccountantRequest) returns (SendAccountantResponse);
+}
+
+message SendAccountantRequest{
+  string message = 1;
+}
+
+message SendAccountantResponse{
+  bool success = 1;
+  string error = 2;
+}

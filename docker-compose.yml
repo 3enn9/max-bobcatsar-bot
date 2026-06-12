@@ -1,11 +1,23 @@
 version: "3.9"
+
 services:
-  app:
-    build: .
+  go-service:
+    build:
+      context: ./go-service
     env_file:
       - .env
     expose:
       - "8080"
+    depends_on:
+      - python-service
+      - postgres
+
+  python-service:
+    build:
+      context: ./python-service
+    container_name: python-service
+    ports:
+      - "50051:50051"
 
   postgres:
     image: postgres:16-alpine
@@ -29,7 +41,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - app
+      - go-service
+
 volumes:
   caddy_data:
   caddy_config:
